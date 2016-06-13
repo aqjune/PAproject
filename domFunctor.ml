@@ -41,7 +41,7 @@ sig
   val leq : t -> t -> bool (* leq x y is true if x is less/equal than y *)
 end
 
-module PrimitiveSet(A: ELEM) : SET = 
+module PrimitiveSet(A: ELEM) = 
 struct
   include Set.Make(A)
   exception Infinite
@@ -50,7 +50,7 @@ struct
   let to_list = elements
 end
 
-module ProductSet (A: SET) (B: SET) : SET =
+module ProductSet (A: SET) (B: SET) =
 struct
   let cmp_elt (a,b) (a', b') = 
     if A.cmp_elt a a' = 0 then
@@ -179,6 +179,11 @@ struct
     match x with
     | ELT s -> ELT (S.remove a s)
     | TOP -> ELT (S.remove a (S.all ()))
+
+  let to_list x = 
+    match x with
+    | TOP -> S.to_list (S.all())
+    | ELT s -> S.to_list s
 end
 
 module FunDomainFromSet (A: SET) (B: DOMAIN) =
@@ -240,18 +245,16 @@ struct
   let update x l r = 
     match x with
     | TOP -> 
-      if (B.leq B.top r)
-      then TOP
-      else ELT (A.fold 
+      if (B.leq B.top r) then TOP else
+        ELT 
+          (A.fold 
             (fun e a -> 
-               if e = l 
+               if A.cmp_elt e l = 0
                then Map.add e r a
                else Map.add e B.top a
-            )
-            (A.all ())
-            Map.empty
-         )
-        | ELT s -> ELT (Map.add l r s)
+            ) (A.all ()) Map.empty
+          )
+    | ELT s -> ELT (Map.add l r s)
 
   let weakupdate x l r = 
     match x with
@@ -260,48 +263,41 @@ struct
       if Map.mem l s 
       then ELT (Map.add l (B.join r (Map.find l s)) s)
       else ELT (Map.add l r s)
-      let map f x = 
-        match x with
-        | TOP -> 
-          ELT (A.fold
-                 (fun e a -> 
-              let (l,r) = f e B.top in
-                Map.add l r a
-                 )
-                 (A.all ())
-                 Map.empty)
-        | ELT s ->
-          ELT 
-            (A.fold
-              (fun e a -> 
-              if (Map.mem e s)
-              then 
-                let (l,r) = f e (Map.find e s) in
-                  Map.add l r a
-              else 
-                let (l,r) = f e B.bot in
-                  Map.add l r a
-                 )
-                 (A.all ())
-              Map.empty)
 
-  let fold f x a = match x with
+  let map f x = 
+    match x with
+    | TOP -> 
+      ELT 
+        (A.fold
+          (fun l a -> 
+            let (l',r') = f l B.top in
+            Map.add l' r' a
+          ) (A.all ()) Map.empty)
+    | ELT s ->
+      ELT 
+        (Map.fold
+          (fun l r a ->
+            let (l', r') = f l r in
+            Map.add l' r' a
+          ) s Map.empty)
+
+  let fold f x acc = 
+    match x with
     | TOP ->
       A.fold
-        (fun e b ->
-           f e B.top b
-        )
-        (A.all ())
-        a
+        (fun l a ->
+           f l B.top a
+        ) (A.all ()) acc
     | ELT s ->
-      A.fold
-        (fun e b ->
-           if Map.mem e s
-           then f e (Map.find e s) b
-           else f e B.bot b
-        )
-        (A.all ())
-        a
+      Map.fold
+        (fun l r a ->
+          f l r a
+        ) s acc
+
+  let to_list x = 
+    match x with
+    | TOP -> List.map (fun l -> (l, B.top)) (A.to_list (A.all()))
+    | ELT s -> Map.bindings s
 
   let make l = 
     ELT (List.fold_left (fun a (b,c) -> Map.add b c a) Map.empty l)
