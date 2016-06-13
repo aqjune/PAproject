@@ -9,6 +9,16 @@ type command =
 
 type node
 
+module Node : sig
+  type t = node
+  (* let get_id : t -> int = fst *)
+  (*let get_command : t -> command = snd *)
+  val compare : t -> t -> int
+  val equal : t -> t -> bool
+  (*let hash = Hashtbl.hash*)
+end
+
+
 type pgm_graph
 
 val get_id : node -> int

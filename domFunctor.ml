@@ -118,6 +118,9 @@ struct
   let r x = snd x
 
   let make a b = (a, b)
+
+  let eq x y = 
+    (leq x y) && (leq y x)
 end
 
 module PowerSetDomain (S: SET) =
@@ -184,6 +187,9 @@ struct
     match x with
     | TOP -> S.to_list (S.all())
     | ELT s -> S.to_list s
+
+  let eq x y =
+    (leq x y) && (leq y x)
 end
 
 module FunDomainFromSet (A: SET) (B: DOMAIN) =
@@ -298,6 +304,9 @@ struct
     match x with
     | TOP -> List.map (fun l -> (l, B.top)) (A.to_list (A.all()))
     | ELT s -> Map.bindings s
+  
+  let eq x y = 
+    (leq x y) && (leq y x)
 
   let make l = 
     ELT (List.fold_left (fun a (b,c) -> Map.add b c a) Map.empty l)
