@@ -20,6 +20,8 @@ module type SET = sig
   val all : unit -> t
   val to_list : t -> elt list
 
+  val sz : t -> int
+
   val add : elt -> t -> t
   val remove : elt -> t -> t
   val mem : elt -> t -> bool
@@ -47,6 +49,7 @@ struct
   exception Infinite
   let cmp_elt = A.compare
   let all () = raise Infinite
+  let sz t : int = (List.length (elements t))
   let to_list = elements
 end
 
@@ -129,6 +132,7 @@ struct
   let bot = ELT S.empty
   let top = TOP
 
+  
   let join x y = 
     match (x,y) with
     | (TOP, _) -> TOP
@@ -188,6 +192,9 @@ struct
     | TOP -> S.to_list (S.all())
     | ELT s -> S.to_list s
 
+  let sz t = 
+    (List.length (to_list t))
+  
   let eq x y =
     (leq x y) && (leq y x)
 end

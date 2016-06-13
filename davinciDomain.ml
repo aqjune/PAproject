@@ -3,91 +3,78 @@ open GraphPgm
 open DomFunctor
 open AbsDomain
 
-module EvenOddAZ  = 
+module DavinciAZElem = 
 struct
-  type t = ZERO | EVEN | ODD | BOT | TOP
-  let bot = BOT
-  let top = TOP
-  
-  let join (az1:t) (az2:t) : t = 
-    match (az1, az2) with
-    | (BOT, az2) -> az2
-    | (az1, BOT) -> az1
-    | (TOP, az2) -> TOP
-    | (az1, TOP) -> TOP
-    | (ZERO, ZERO) -> ZERO
-    | (ZERO, EVEN) -> EVEN
-    | (ZERO, ODD) -> TOP
-    | (EVEN, ZERO) -> EVEN
-    | (EVEN, EVEN) -> EVEN
-    | (EVEN, ODD) -> TOP
-    | (ODD, ZERO) -> TOP
-    | (ODD, ODD) -> ODD
-    | (ODD, EVEN) -> TOP
-
-  let leq (az1:t) (az2:t) : bool = 
-    match (az1, az2) with
-    | (BOT, _) -> true
-    | (_, TOP) -> true
-    | (TOP, _) -> false
-    | (_, BOT) -> false
-    | (ZERO, EVEN) -> true
-    | (x, y) -> x = y
-
-  let to_str (az:t) : string =
-    match az with
-    | TOP -> "TOP"
-    | BOT -> "BOTTOM"
-    | ZERO -> "0"
-    | ODD -> "ODD"
-    | EVEN -> "EVEN"
-
-  let make (n:int) : t = 
-    if n = 0 then ZERO else 
-      (if n mod 2 = 0 then EVEN else ODD)
+  type t = int
+  let compare (n:int) (m:int) = n - m
 end
 
-module EvenOddSemantics
+module DavinciAZElemSet = PrimitiveSet(DavinciAZElem)
+
+module DavinciAZ = 
+struct
+  include PowerSetDomain(DavinciAZElemSet)
+
+  let to_str (az:t) : string =
+    if sz az > 100 then
+      Printf.sprintf "(Too large to print)"
+    else
+      fold 
+        (fun elem str -> Printf.sprintf "%d %s" elem str)
+        az
+        ""
+  
+  let top' : t = 
+    make
+      (let rec f i = 
+        if i < 1867 then i::(f (i + 1)) else []
+      in f 0)
+
+  let make (n:int) : t = 
+    make [n mod 1867]
+end
+
+module DavinciSemantics
 =
 struct
 
-  type aZ = EvenOddAZ.t
+  type aZ = DavinciAZ.t
   type aLoc = LocDomain.t
-  module EvenOddValue = Value(EvenOddAZ)
-  module StoreDomain = StoreDomain(EvenOddValue)
-  type aValue = EvenOddValue.t
+  module DavinciValue = Value(DavinciAZ)
+  module StoreDomain = StoreDomain(DavinciValue)
+  type aValue = DavinciValue.t
   type aStore = StoreDomain.t
 
   let calc_aplus ((x1, x2):(aValue * aValue)) : aValue = 
-    let aZvalue = match (EvenOddValue.get_az x1, EvenOddValue.get_az x2) with
-    | (EvenOddAZ.ZERO, x2) -> x2
-    | (x1, EvenOddAZ.ZERO) -> x1
-    | (EvenOddAZ.TOP, x2) -> EvenOddAZ.TOP
-    | (x1, EvenOddAZ.TOP) -> EvenOddAZ.TOP
-    | (EvenOddAZ.BOT, x2) -> EvenOddAZ.BOT
-    | (x1, EvenOddAZ.BOT) -> EvenOddAZ.BOT
-    | (EvenOddAZ.EVEN, EvenOddAZ.EVEN) -> EvenOddAZ.EVEN
-    | (EvenOddAZ.ODD, EvenOddAZ.ODD) -> EvenOddAZ.EVEN
-    | (EvenOddAZ.EVEN, EvenOddAZ.ODD) -> EvenOddAZ.ODD
-    | (EvenOddAZ.ODD, EvenOddAZ.EVEN) -> EvenOddAZ.ODD
+    let aZvalue = 
+      let (az1, az2) = (DavinciValue.get_az x1, DavinciValue.get_az x2) in
+      DavinciAZ.fold
+        (fun az1elem az2union ->
+          let az2' = DavinciAZ.map (fun az2elem -> (az2elem + az1elem) mod 1867) az2 in
+          DavinciAZ.join az2union az2')
+        az1
+        (DavinciAZ.bot)
     in (aZvalue, LocDomain.bot)
 
   let calc_aminus (x:aValue) : aValue = 
-    let (aZval, aLocval) = x in (aZval, LocDomain.bot)
+    let (aZval, aLocval) = x 
+    in 
+    (DavinciAZ.map (fun azelem -> (0 - azelem + 1867) mod 1867) aZval, 
+      LocDomain.bot)
 
   let calc_aderef (x:var) (aM:aStore) : aValue = 
     let (aZval, aLocval) = StoreDomain.image aM x in
     LocDomain.fold 
       (fun x' (azacc, alacc) -> 
         let (az, al) = StoreDomain.image aM x' in
-        (EvenOddAZ.join az azacc, LocDomain.join al alacc)) 
-      aLocval (EvenOddAZ.bot, LocDomain.bot)
+        (DavinciAZ.join az azacc, LocDomain.join al alacc)) 
+      aLocval (DavinciAZ.bot, LocDomain.bot)
 
-  let calc_areadint = (EvenOddAZ.top, LocDomain.bot)
+  let calc_areadint = (DavinciAZ.top', LocDomain.bot)
 
   let rec calc_aE (e:exp) (aM:aStore) : aValue = 
     match e with
-    | NUM n -> EvenOddValue.num n
+    | NUM n -> DavinciValue.num n
     | ADD (e1, e2) -> 
       let av1 = calc_aE e1 aM in
       let av2 = calc_aE e2 aM in
@@ -97,7 +84,7 @@ struct
       calc_aminus av
     | VAR x -> StoreDomain.image aM x
     | DEREF x -> calc_aderef x aM
-    | LOC x -> EvenOddValue.loc x
+    | LOC x -> DavinciValue.loc x
     | READINT -> calc_areadint
     
   let make_m' (node:NodeDomain.t) (m:aStore) : (bool * aStore) = 
@@ -110,7 +97,7 @@ struct
       | Assign (x, e) -> (true, StoreDomain.update m x (calc_aE e m))
       | PtrAssign (x, e) -> 
         (let v' = StoreDomain.image m x in
-        let locs = EvenOddValue.get_locs v' in
+        let locs = DavinciValue.get_locs v' in
         let ev = calc_aE e m in
         let stores : (aStore option) list = 
             List.map 
@@ -130,10 +117,9 @@ struct
       | Assume e -> (true, m)
       | AssumeNot e -> 
         let v' = calc_aE e m in
-        let az = EvenOddValue.get_az v' in
-        if az == EvenOddAZ.ZERO || az == EvenOddAZ.EVEN || az == EvenOddAZ.TOP then 
-          (true, m)
+        let az = DavinciValue.get_az v' in
+        let az_list = DavinciAZ.to_list az in
+        if List.exists (fun n -> n == 0) az_list then (true, m)
         else (false, m)
       | Skip -> (true, m)
-
 end

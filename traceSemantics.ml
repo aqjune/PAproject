@@ -32,10 +32,13 @@ struct
   let calc_anext (pgm:pgm_graph) (ast:aState) : aState list =
     let (node, m) = ast in
     let (nextlist:NodeDomain.t list) = NodeDomain.next_nodes pgm node in
-    List.map 
-        (fun (nextnode:NodeDomain.t) -> 
-          StateDomain.make nextnode (Semantics.make_m' nextnode m)) 
+    List.fold_right
+        (fun (nextnode:NodeDomain.t) acc -> 
+          let (proceed, m') = (Semantics.make_m' nextnode m) in
+          if proceed then (StateDomain.make nextnode m')::acc
+          else acc) 
         nextlist
+        []
 
   let rec calc_api (pgm:pgm_graph) (astlist:aState list) : (aState list) list =
     let (allnodes:GraphPgm.node list) = all_nodes pgm in
@@ -51,7 +54,7 @@ struct
   struct
     include FunDomain(NodeDomain)(Semantics.StoreDomain)
     let initial (nd0:NodeDomain.t) = 
-      make [(nd0, (Semantics.make_m' nd0 StoreDomain.bot))] 
+      make [(nd0, snd (Semantics.make_m' nd0 StoreDomain.bot))] 
   end
 
   type trace = TraceDomain.t
@@ -69,7 +72,8 @@ struct
     
     let (astlist:aState list) = TraceDomain.to_list t in
     
-    let astlist_next:aState list list = List.map (fun (ast:aState) -> calc_anext pgm ast) astlist in
+    let astlist_next:aState list list = 
+      List.map (fun (ast:aState) -> calc_anext pgm ast) astlist in
     let astlist_next = List.flatten astlist_next in
     let _ = print_endline "after applying calc_anext() : " in
     let _ = print_endline (StateDomain.list_to_str astlist_next) in

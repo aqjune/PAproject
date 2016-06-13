@@ -111,6 +111,7 @@ sig
   val image : t -> keyt -> valuet
   val fold : (keyt -> valuet -> 'a -> 'a) -> t -> 'a -> 'a
   val to_str : t -> string
+  val to_list : t -> (keyt * valuet) list
 end
 
 module StoreDomain (Value:VALUEDOMAIN) = 
