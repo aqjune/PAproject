@@ -43,6 +43,11 @@ end
 
 type pgm_graph = G.t * node * node (* (graph, start node, end node) *)
 
+let get_nodeid (n:node) = 
+  fst n
+let get_command (n:node) = 
+  snd n
+
 let get_start_node pgm_g =
   let (g, start_node, end_node) = pgm_g in
   start_node

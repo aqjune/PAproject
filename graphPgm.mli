@@ -9,6 +9,17 @@ type command =
 
 type node
 
+module Node : sig
+  type t = node
+  (* let get_id : t -> int = fst *)
+  (*let get_command : t -> command = snd *)
+  val compare : t -> t -> int
+  val equal : t -> t -> bool
+  (*let hash = Hashtbl.hash*)
+end
+
+
+
 type pgm_graph
 
 val get_start_node : pgm_graph -> node
@@ -16,6 +27,8 @@ val get_end_node : pgm_graph -> node
 val next_nodes : pgm_graph -> node -> node list
 val pred_nodes : pgm_graph -> node -> node list
 val all_nodes : pgm_graph -> node list
+val get_nodeid : node -> int
+val get_command : node -> command
 
 (* From here, you don't have to care *)
 val graph_to_dot : pgm_graph -> string
