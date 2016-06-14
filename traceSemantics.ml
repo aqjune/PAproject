@@ -67,22 +67,22 @@ struct
       ""
 
   let doNext (pgm:pgm_graph) (t0:trace) (t:trace) : trace =
-    let _ = print_endline "Before doNext() : " in
-    let _ = print_endline (trace_to_str t) in
+    (* let _ = print_endline "Before doNext() : " in *)
+    (* let _ = print_endline (trace_to_str t) in *)
     
     let (astlist:aState list) = TraceDomain.to_list t in
     
     let astlist_next:aState list list = 
       List.map (fun (ast:aState) -> calc_anext pgm ast) astlist in
     let astlist_next = List.flatten astlist_next in
-    let _ = print_endline "after applying calc_anext() : " in
-    let _ = print_endline (StateDomain.list_to_str astlist_next) in
+    (* let _ = print_endline "after applying calc_anext() : " in *)
+    (* let _ = print_endline (StateDomain.list_to_str astlist_next) in *)
     
     let astlist_next_p = calc_api pgm astlist_next in
-    let _ = print_endline "after applying calc_api() : " in
-    let _ = print_endline (List.fold_right 
+    (* let _ = print_endline "after applying calc_api() : " in *)
+    (* let _ = print_endline (List.fold_right 
       (fun asts str -> Printf.sprintf "--\n%s%s" (StateDomain.list_to_str asts) str) 
-      astlist_next_p "") in
+      astlist_next_p "") in *)
     
     let tnext = List.fold_right 
       (fun (astl:aState list) (* a list of abstract states with same node *)
@@ -108,7 +108,7 @@ struct
     let nd0 = NodeDomain.make (get_start_node pgm) in
 	  let t0 = TraceDomain.initial nd0 in
     let rec _run (pgm:pgm_graph) (t:trace) (tnext:trace) (ith:int) : (trace * int) =
-      let _ = print_endline (Printf.sprintf "---- itr %d ----\n%s" ith (trace_to_str t)) in
+      (* let _ = print_endline (Printf.sprintf "---- itr %d ----\n%s" ith (trace_to_str t)) in *)
       
       if TraceDomain.eq t tnext then
         (tnext, ith)
