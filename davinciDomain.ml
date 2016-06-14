@@ -86,7 +86,18 @@ struct
     | DEREF x -> calc_aderef x aM
     | LOC x -> DavinciValue.loc x
     | READINT -> calc_areadint
-    
+  
+  let calc_aB (e:exp) (m:aStore) : aStore = m
+  let calc_aNB (e:exp) (m:aStore) : aStore = 
+    match e with
+    | VAR x -> StoreDomain.update m x (DavinciValue.num 0)
+    | ADD ((VAR x), e') | ADD (e', (VAR x)) -> 
+      let v' = calc_aE e' m in
+      let (az', loc') = (DavinciValue.get_az v', DavinciValue.get_locs v') in
+      let maz' =  (DavinciAZ.map (fun n -> (1867 - n) mod 1867) az') in
+      StoreDomain.update m x (maz', loc')
+    | _ -> m
+
   let make_m' (node:NodeDomain.t) (m:aStore) : (bool * aStore) = 
     match node with
     | NodeDomain.TOP -> raise (Failure "Cannot be top")
@@ -114,12 +125,12 @@ struct
         match joinedst with
         | None -> raise (Failure "Cannot be none")
         | Some m' -> (true, m'))
-      | Assume e -> (true, m)
+      | Assume e -> (true, calc_aB e m)
       | AssumeNot e -> 
         let v' = calc_aE e m in
         let az = DavinciValue.get_az v' in
         let az_list = DavinciAZ.to_list az in
-        if List.exists (fun n -> n == 0) az_list then (true, m)
+        if List.exists (fun n -> n == 0) az_list then (true, calc_aNB e m)
         else (false, m)
       | Skip -> (true, m)
 end

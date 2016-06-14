@@ -99,7 +99,18 @@ struct
     | DEREF x -> calc_aderef x aM
     | LOC x -> EvenOddValue.loc x
     | READINT -> calc_areadint
-    
+
+  let calc_aB (e:exp) (m:aStore) : aStore = m
+  
+  let calc_aNB (e:exp) (m:aStore) : aStore = 
+    match e with
+    | VAR x -> StoreDomain.update m x (EvenOddValue.num 0)
+    | ADD ((VAR x), e') | ADD (e', (VAR x)) -> 
+      let v' = calc_aE e' m in
+      StoreDomain.update m x v'
+    | _ -> m
+
+
   let make_m' (node:NodeDomain.t) (m:aStore) : (bool * aStore) = 
     match node with
     | NodeDomain.TOP -> raise (Failure "Cannot be top")
@@ -127,12 +138,12 @@ struct
         match joinedst with
         | None -> raise (Failure "Cannot be none")
         | Some m' -> (true, m'))
-      | Assume e -> (true, m)
+      | Assume e -> (true, (calc_aB e m))
       | AssumeNot e -> 
         let v' = calc_aE e m in
         let az = EvenOddValue.get_az v' in
         if az == EvenOddAZ.ZERO || az == EvenOddAZ.EVEN || az == EvenOddAZ.TOP then 
-          (true, m)
+          (true, (calc_aNB e m))
         else (false, m)
       | Skip -> (true, m)
 
